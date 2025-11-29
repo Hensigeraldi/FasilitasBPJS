@@ -8,11 +8,14 @@
     "start": "next start"
   },
   "dependencies": {
+    "@prisma/client": "^7.0.1",
+    "lucide-react": "^0.555.0",
     "next": "16.0.5",
     "react": "19.2.0",
     "react-dom": "19.2.0"
   },
   "devDependencies": {
-    "babel-plugin-react-compiler": "1.0.0"
+    "babel-plugin-react-compiler": "1.0.0",
+    "prisma": "^7.0.1"
   }
 }
