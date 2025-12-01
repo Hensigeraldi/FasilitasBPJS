@@ -1,11 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Building2, Package } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { LayoutDashboard, Building2, Package, X, LogOut } from 'lucide-react';
+import Cookies from 'js-cookie';
+import { useState } from 'react';
 
-export default function Sidebar() {
+export default function Sidebar({ isMobileOpen, onClose }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const menuItems = [
     { 
@@ -30,13 +34,36 @@ export default function Sidebar() {
     },
   ];
 
+  const handleLinkClick = () => {
+    if (onClose) {
+      onClose();
+    }
+  };
+
+  const handleLogout = () => {
+  const confirmLogout = window.confirm('Apakah Anda yakin ingin keluar?');
+  
+    if (confirmLogout) {
+      setIsLoggingOut(true);
+      Cookies.remove('user');
+      
+      setTimeout(() => {
+        router.push('/login');
+        setIsLoggingOut(false);
+      }, 500);
+    }
+  };
+
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar ${isMobileOpen ? 'mobile-open' : ''}`}>
       <div className="sidebar-header">
         <div className="sidebar-logo">
           <Package size={28} />
           <span>BPJS Asset</span>
         </div>
+        <button className="sidebar-close" onClick={onClose}>
+          <X size={20} />
+        </button>
       </div>
       
       <nav className="sidebar-nav">
@@ -49,6 +76,7 @@ export default function Sidebar() {
               key={item.href}
               href={item.href}
               className={`nav-link ${isActive ? 'active' : ''}`}
+              onClick={handleLinkClick}
             >
               <Icon size={20} />
               <span>{item.label}</span>
@@ -56,6 +84,18 @@ export default function Sidebar() {
           );
         })}
       </nav>
+
+      {/* Logout Button */}
+      <div className="sidebar-footer">
+        <button 
+          onClick={handleLogout}
+          className="logout-button"
+          disabled={isLoggingOut}
+        >
+          <LogOut size={20} />
+          <span>{isLoggingOut ? 'Logging out...' : 'Logout'}</span>
+        </button>
+      </div>
     </aside>
   );
 }

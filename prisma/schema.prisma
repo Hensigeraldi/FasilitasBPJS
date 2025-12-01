@@ -4,20 +4,20 @@ generator client {
 
 datasource db {
   provider = "mysql"
+  url      = env("DATABASE_URL")
 }
 
 model Asset {
-  id            Int      @id @default(autoincrement())
-  nama          String   @db.VarChar(255)
-  kode_aset     String   @unique @db.VarChar(100)
-  kategori      String   @db.VarChar(100)
+  id            Int           @id @default(autoincrement())
+  nama          String        @db.VarChar(255)
+  kode_aset     String        @unique @db.VarChar(100)
+  kategori      String        @db.VarChar(100)
   lokasi_lantai Int
-  kondisi       String   @db.VarChar(50)
-  status        String   @db.VarChar(50)
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
-
-  logs ActivityLog[]
+  kondisi       String        @db.VarChar(50)
+  status        String        @db.VarChar(50)
+  created_at    DateTime      @default(now())
+  updated_at    DateTime      @updatedAt
+  logs          ActivityLog[]
 
   @@index([lokasi_lantai])
   @@index([kode_aset])
@@ -25,19 +25,29 @@ model Asset {
 }
 
 model ActivityLog {
-  id             Int      @id @default(autoincrement())
-  asset_id       Int
-  action         LogAction
-  lantai_asal    Int?
-  lantai_tujuan  Int?
-  deskripsi      String?  @db.Text
-  timestamp      DateTime @default(now())
-
-  asset Asset @relation(fields: [asset_id], references: [id], onDelete: Cascade)
+  id            Int       @id @default(autoincrement())
+  asset_id      Int
+  action        LogAction
+  lantai_asal   Int?
+  lantai_tujuan Int?
+  deskripsi     String?   @db.Text
+  timestamp     DateTime  @default(now())
+  asset         Asset     @relation(fields: [asset_id], references: [id], onDelete: Cascade)
 
   @@index([asset_id])
   @@index([action])
   @@map("activity_logs")
+}
+
+model User {
+  id         Int      @id @default(autoincrement())
+  username   String   @unique @db.VarChar(50)
+  password   String   @db.VarChar(255)
+  role       String   @default("admin") @db.VarChar(20)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("users")
 }
 
 enum LogAction {

@@ -39,7 +39,13 @@ export default function Dashboard() {
   };
 
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="card">
+        <div className="card-body text-center">
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -52,72 +58,85 @@ export default function Dashboard() {
       </div>
 
       <div className="stats-grid">
-            <div className="stat-card">
-      <div className="stat-card-header">
-        <div>
-          <div className="stat-card-title">Aset Rusak</div>
-          <div className="stat-card-value">{stats.assetRusak}</div>
+        {/* Total Aset Card */}
+        <div className="stat-card">
+          <div className="stat-card-header">
+            <div>
+              <div className="stat-card-title">Total Aset</div>
+              <div className="stat-card-value">{stats.totalAssets}</div>
+            </div>
+            <div className="stat-card-icon primary">
+              <Package size={24} />
+            </div>
+          </div>
         </div>
-        <div className="stat-card-icon warning">
-          <AlertTriangle size={24} />
+
+        <div className="stat-card">
+          <div className="stat-card-header">
+            <div>
+              <div className="stat-card-title">Aset Rusak</div>
+              <div className="stat-card-value">{stats.assetRusak}</div>
+            </div>
+            <div className="stat-card-icon warning">
+              <AlertTriangle size={24} />
+            </div>
+          </div>
+        </div>
+
+        <div className="stat-card">
+          <div className="stat-card-header">
+            <div>
+              <div className="stat-card-title">Lantai 1</div>
+              <div className="stat-card-value">{stats.lantai1}</div>
+            </div>
+            <div className="stat-card-icon success">
+              <Building2 size={24} />
+            </div>
+          </div>
+        </div>
+
+        <div className="stat-card">
+          <div className="stat-card-header">
+            <div>
+              <div className="stat-card-title">Lantai 2</div>
+              <div className="stat-card-value">{stats.lantai2}</div>
+            </div>
+            <div className="stat-card-icon success">
+              <Building2 size={24} />
+            </div>
+          </div>
+        </div>
+
+        <div className="stat-card">
+          <div className="stat-card-header">
+            <div>
+              <div className="stat-card-title">Lantai 3</div>
+              <div className="stat-card-value">{stats.lantai3}</div>
+            </div>
+            <div className="stat-card-icon success">
+              <Building2 size={24} />
+            </div>
+          </div>
         </div>
       </div>
-    </div>
 
-    <div className="stat-card">
-      <div className="stat-card-header">
-        <div>
-          <div className="stat-card-title">Lantai 1</div>
-          <div className="stat-card-value">{stats.lantai1}</div>
+      <div className="card">
+        <div className="card-header">
+          <h2 className="card-title">Selamat Datang</h2>
         </div>
-        <div className="stat-card-icon success">
-          <Building2 size={24} />
+        <div className="card-body">
+          <p style={{ marginBottom: '1rem' }}>
+            Sistem ini membantu mengelola dan melacak aset BPJS Ketenagakerjaan 
+            Manado dengan fitur:
+          </p>
+          <ul style={{ paddingLeft: '1.5rem', lineHeight: '1.8' }}>
+            <li>Manajemen aset per lantai</li>
+            <li>Pencatatan kondisi dan status aset</li>
+            <li>Tracking perpindahan aset antar lantai</li>
+            <li>Histori aktivitas lengkap</li>
+          </ul>
         </div>
       </div>
-    </div>
-
-    <div className="stat-card">
-      <div className="stat-card-header">
-        <div>
-          <div className="stat-card-title">Lantai 2</div>
-          <div className="stat-card-value">{stats.lantai2}</div>
-        </div>
-        <div className="stat-card-icon success">
-          <Building2 size={24} />
-        </div>
-      </div>
-    </div>
-
-    <div className="stat-card">
-      <div className="stat-card-header">
-        <div>
-          <div className="stat-card-title">Lantai 3</div>
-          <div className="stat-card-value">{stats.lantai3}</div>
-        </div>
-        <div className="stat-card-icon success">
-          <Building2 size={24} />
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div className="card">
-    <div className="card-header">
-      <h2 className="card-title">Selamat Datang</h2>
-    </div>
-    <div className="card-body">
-      <p style={{ marginBottom: '1rem' }}>
-        Sistem ini membantu mengelola dan melacak aset BPJS Ketenagakerjaan 
-        Manado dengan fitur:
-      </p>
-      <ul style={{ paddingLeft: '1.5rem', lineHeight: '1.8' }}>
-        <li>Manajemen aset per lantai</li>
-        <li>Pencatatan kondisi dan status aset</li>
-        <li>Tracking perpindahan aset antar lantai</li>
-        <li>Histori aktivitas lengkap</li>
-      </ul>
-    </div>
-  </div>
-</>
-);
+    </>
+  );
 }

@@ -4,10 +4,12 @@ import prisma from '@/lib/prisma';
 // GET: Fetch single asset
 export async function GET(request, { params }) {
   try {
-    const id = parseInt(params.id);
+    // PASTIKAN ADA AWAIT DI SINI
+    const { id } = await params;
+    const assetId = parseInt(id);
 
     const asset = await prisma.asset.findUnique({
-      where: { id },
+      where: { id: assetId },
       include: {
         logs: {
           orderBy: { timestamp: 'desc' }
@@ -35,7 +37,10 @@ export async function GET(request, { params }) {
 // PUT: Update asset
 export async function PUT(request, { params }) {
   try {
-    const id = parseInt(params.id);
+    // PASTIKAN ADA AWAIT DI SINI
+    const { id } = await params;
+    const assetId = parseInt(id);
+    
     const body = await request.json();
     const { nama, kode_aset, kategori, lokasi_lantai, kondisi, status } = body;
 
@@ -51,7 +56,7 @@ export async function PUT(request, { params }) {
     const result = await prisma.$transaction(async (tx) => {
       // Fetch old data
       const oldAsset = await tx.asset.findUnique({
-        where: { id }
+        where: { id: assetId }
       });
 
       if (!oldAsset) {
@@ -71,7 +76,7 @@ export async function PUT(request, { params }) {
 
       // Update asset
       const updatedAsset = await tx.asset.update({
-        where: { id },
+        where: { id: assetId },
         data: {
           nama,
           kode_aset,
@@ -100,7 +105,7 @@ export async function PUT(request, { params }) {
       // Create log
       await tx.activityLog.create({
         data: {
-          asset_id: id,
+          asset_id: assetId,
           action,
           lantai_asal,
           lantai_tujuan,
@@ -124,13 +129,15 @@ export async function PUT(request, { params }) {
 // DELETE: Delete asset
 export async function DELETE(request, { params }) {
   try {
-    const id = parseInt(params.id);
+    // PASTIKAN ADA AWAIT DI SINI
+    const { id } = await params;
+    const assetId = parseInt(id);
 
     // Transaction: Create Log + Delete Asset
     await prisma.$transaction(async (tx) => {
       // Fetch asset before delete
       const asset = await tx.asset.findUnique({
-        where: { id }
+        where: { id: assetId }
       });
 
       if (!asset) {
@@ -140,7 +147,7 @@ export async function DELETE(request, { params }) {
       // Create log
       await tx.activityLog.create({
         data: {
-          asset_id: id,
+          asset_id: assetId,
           action: 'DELETE',
           deskripsi: `Aset "${asset.nama}" (${asset.kode_aset}) dihapus dari Lantai ${asset.lokasi_lantai}`
         }
@@ -148,7 +155,7 @@ export async function DELETE(request, { params }) {
 
       // Delete asset (logs will be cascade deleted)
       await tx.asset.delete({
-        where: { id }
+        where: { id: assetId }
       });
     });
 
