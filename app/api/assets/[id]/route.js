@@ -4,7 +4,6 @@ import prisma from '@/lib/prisma';
 // GET: Fetch single asset
 export async function GET(request, { params }) {
   try {
-    // PASTIKAN ADA AWAIT DI SINI
     const { id } = await params;
     const assetId = parseInt(id);
 
@@ -37,17 +36,25 @@ export async function GET(request, { params }) {
 // PUT: Update asset
 export async function PUT(request, { params }) {
   try {
-    // PASTIKAN ADA AWAIT DI SINI
     const { id } = await params;
     const assetId = parseInt(id);
-    
+   
     const body = await request.json();
-    const { nama, kode_aset, kategori, lokasi_lantai, kondisi, status } = body;
+    const { nama, kode_aset, lokasi_lantai, kondisi, status, jumlah } = body;
 
     // Validation
-    if (!nama || !kode_aset || !kategori || !lokasi_lantai || !kondisi || !status) {
+    if (!nama || !kode_aset || !lokasi_lantai || !kondisi || !status) {
       return NextResponse.json(
         { success: false, error: 'All fields are required' },
+        { status: 400 }
+      );
+    }
+
+    // Validate jumlah
+    const qty = parseInt(jumlah) || 1;
+    if (qty < 1) {
+      return NextResponse.json(
+        { success: false, error: 'Jumlah minimal 1' },
         { status: 400 }
       );
     }
@@ -63,14 +70,18 @@ export async function PUT(request, { params }) {
         throw new Error('Asset not found');
       }
 
-      // Check if kode_aset changed and already used by another asset
-      if (kode_aset !== oldAsset.kode_aset) {
-        const existing = await tx.asset.findUnique({
-          where: { kode_aset }
+      // PERBAIKAN: Check if kode_aset changed and already used by another asset on SAME floor
+      if (kode_aset !== oldAsset.kode_aset || parseInt(lokasi_lantai) !== oldAsset.lokasi_lantai) {
+        const existing = await tx.asset.findFirst({
+          where: {
+            kode_aset: kode_aset,
+            lokasi_lantai: parseInt(lokasi_lantai),
+            id: { not: assetId } // exclude current asset
+          }
         });
-
+        
         if (existing) {
-          throw new Error('Kode aset sudah digunakan');
+          throw new Error('Kode aset sudah digunakan di lantai ini');
         }
       }
 
@@ -80,10 +91,10 @@ export async function PUT(request, { params }) {
         data: {
           nama,
           kode_aset,
-          kategori,
           lokasi_lantai: parseInt(lokasi_lantai),
           kondisi,
-          status
+          status,
+          jumlah: qty
         }
       });
 
@@ -99,7 +110,7 @@ export async function PUT(request, { params }) {
         action = 'MOVE';
         lantai_asal = oldAsset.lokasi_lantai;
         lantai_tujuan = newLantai;
-        deskripsi = `Aset "${nama}" dipindahkan dari Lantai ${lantai_asal} ke Lantai ${lantai_tujuan}`;
+        deskripsi = `Aset "${nama}" dipindahkan dari Lantai ${lantai_asal} ke Lantai ${lantai_tujuan} (${qty} unit)`;
       }
 
       // Create log
@@ -109,6 +120,7 @@ export async function PUT(request, { params }) {
           action,
           lantai_asal,
           lantai_tujuan,
+          jumlah: qty,
           deskripsi
         }
       });
@@ -129,7 +141,6 @@ export async function PUT(request, { params }) {
 // DELETE: Delete asset
 export async function DELETE(request, { params }) {
   try {
-    // PASTIKAN ADA AWAIT DI SINI
     const { id } = await params;
     const assetId = parseInt(id);
 
@@ -149,7 +160,8 @@ export async function DELETE(request, { params }) {
         data: {
           asset_id: assetId,
           action: 'DELETE',
-          deskripsi: `Aset "${asset.nama}" (${asset.kode_aset}) dihapus dari Lantai ${asset.lokasi_lantai}`
+          jumlah: asset.jumlah,
+          deskripsi: `Aset "${asset.nama}" (${asset.kode_aset}) dihapus dari Lantai ${asset.lokasi_lantai} sebanyak ${asset.jumlah} unit`
         }
       });
 
@@ -159,9 +171,9 @@ export async function DELETE(request, { params }) {
       });
     });
 
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Asset deleted successfully' 
+    return NextResponse.json({
+      success: true,
+      message: 'Asset deleted successfully'
     });
   } catch (error) {
     console.error('Error deleting asset:', error);

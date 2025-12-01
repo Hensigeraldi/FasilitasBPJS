@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
-// GET: Fetch all assets with optional filter by lantai
+// GET: Fetch all assets or filter by lantai
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -14,8 +14,8 @@ export async function GET(request) {
       orderBy: { created_at: 'desc' },
       include: {
         logs: {
-          take: 5,
-          orderBy: { timestamp: 'desc' }
+          orderBy: { timestamp: 'desc' },
+          take: 5
         }
       }
     });
@@ -34,49 +34,65 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { nama, kode_aset, kategori, lokasi_lantai, kondisi, status } = body;
+    const { nama, kode_aset, lokasi_lantai, kondisi, status, jumlah } = body;
 
     // Validation
-    if (!nama || !kode_aset || !kategori || !lokasi_lantai || !kondisi || !status) {
+    if (!nama || !kode_aset || !lokasi_lantai || !kondisi || !status) {
       return NextResponse.json(
         { success: false, error: 'All fields are required' },
         { status: 400 }
       );
     }
 
+    // Validate jumlah
+    const qty = parseInt(jumlah) || 1;
+    if (qty < 1) {
+      return NextResponse.json(
+        { success: false, error: 'Jumlah minimal 1' },
+        { status: 400 }
+      );
+    }
+
+    // PERBAIKAN: Check if kode_aset already exists on SAME floor
+    const existing = await prisma.asset.findFirst({
+      where: {
+        kode_aset: kode_aset,
+        lokasi_lantai: parseInt(lokasi_lantai)
+      }
+    });
+
+    if (existing) {
+      return NextResponse.json(
+        { success: false, error: 'Kode aset sudah digunakan di lantai ini' },
+        { status: 400 }
+      );
+    }
+
     // Transaction: Create Asset + Log
     const result = await prisma.$transaction(async (tx) => {
-      // Check if kode_aset already exists
-      const existing = await tx.asset.findUnique({
-        where: { kode_aset }
-      });
-
-      if (existing) {
-        throw new Error('Kode aset sudah digunakan');
-      }
-
       // Create asset
-      const asset = await tx.asset.create({
+      const newAsset = await tx.asset.create({
         data: {
           nama,
           kode_aset,
-          kategori,
           lokasi_lantai: parseInt(lokasi_lantai),
           kondisi,
-          status
+          status,
+          jumlah: qty
         }
       });
 
       // Create log
       await tx.activityLog.create({
         data: {
-          asset_id: asset.id,
+          asset_id: newAsset.id,
           action: 'CREATE',
-          deskripsi: `Aset "${nama}" berhasil ditambahkan ke Lantai ${lokasi_lantai}`
+          jumlah: qty,
+          deskripsi: `Aset "${nama}" ditambahkan ke Lantai ${lokasi_lantai} sebanyak ${qty} unit`
         }
       });
 
-      return asset;
+      return newAsset;
     });
 
     return NextResponse.json({ success: true, data: result }, { status: 201 });

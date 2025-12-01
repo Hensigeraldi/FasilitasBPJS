@@ -573,6 +573,84 @@ button {
 .mt-2 { margin-top: 1rem; }
 .w-full { width: 100%; }
 
+/* Search Box dengan Clear Button */
+.search-box {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-light);
+  pointer-events: none;
+}
+
+.search-input {
+  width: 100%;
+  padding: 10px 40px 10px 40px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 14px;
+  background: var(--color-white);
+  transition: border-color 0.2s;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.search-clear {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--color-text-light);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  min-width: 28px;
+  min-height: 28px;
+}
+
+.search-clear:hover {
+  background: var(--color-gray-100);
+  color: var(--color-error);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .search-box {
+    max-width: 100%;
+  }
+  
+  .search-input {
+    padding: 10px 36px 10px 36px;
+    font-size: 16px; /* Larger for mobile */
+  }
+  
+  .search-clear {
+    right: 8px;
+    min-width: 32px;
+    min-height: 32px;
+  }
+  
+  .search-icon {
+    left: 10px;
+  }
+}
+
 /* ===============================================
    RESPONSIVE BREAKPOINTS
    =============================================== */

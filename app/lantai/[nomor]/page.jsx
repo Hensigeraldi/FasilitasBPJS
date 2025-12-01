@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import { 
-  Plus, Pencil, Trash2, X, ArrowRight, 
-  Search, Package, Filter, MoreVertical 
+import {
+  Plus, Pencil, Trash2, X, ArrowRight,
+  Search, Package, AlertCircle
 } from 'lucide-react';
 
-export default function EnhancedLantaiPage() {
+export default function LantaiPage() {
   const params = useParams();
   const lantai = parseInt(params.nomor);
 
@@ -22,29 +22,29 @@ export default function EnhancedLantaiPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('Semua');
   const [isMobile, setIsMobile] = useState(false);
-  
+  const [searchTimeout, setSearchTimeout] = useState(null);
+
   const [formData, setFormData] = useState({
     nama: '',
     kode_aset: '',
-    kategori: '',
     lokasi_lantai: lantai,
     kondisi: 'Baik',
     status: 'Aktif',
+    jumlah: 1
   });
 
   const [moveFormData, setMoveFormData] = useState({
     assetId: '',
     targetLantai: '',
-    keterangan: ''
+    jumlah: 1
   });
 
-  const filters = ['Semua', 'Baik', 'Rusak Ringan', 'Rusak Berat'];
+  const filters = ['Semua', 'Baik', 'Rusak'];
   const availableFloors = [1, 2, 3].filter(floor => floor !== lantai);
 
   useEffect(() => {
     fetchAssets();
     
-    // Check if mobile on mount and resize
     const checkMobile = () => {
       setIsMobile(window.innerWidth <= 768);
     };
@@ -56,7 +56,17 @@ export default function EnhancedLantaiPage() {
   }, [lantai]);
 
   useEffect(() => {
-    filterAssets();
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
+    }
+    
+    const timeout = setTimeout(() => {
+      filterAssets();
+    }, 300);
+    
+    setSearchTimeout(timeout);
+    
+    return () => clearTimeout(timeout);
   }, [assets, searchQuery, activeFilter]);
 
   const fetchAssets = async () => {
@@ -84,15 +94,15 @@ export default function EnhancedLantaiPage() {
     }
   };
 
-  const filterAssets = () => {
+  const filterAssets = useCallback(() => {
     let filtered = [...assets];
     
     // Filter by search query
-    if (searchQuery) {
-      filtered = filtered.filter(asset => 
-        asset.nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        asset.kode_aset.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        asset.kategori.toLowerCase().includes(searchQuery.toLowerCase())
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(asset =>
+        asset.nama.toLowerCase().includes(query) ||
+        asset.kode_aset.toLowerCase().includes(query)
       );
     }
     
@@ -102,66 +112,33 @@ export default function EnhancedLantaiPage() {
     }
     
     setFilteredAssets(filtered);
-  };
+  }, [assets, searchQuery, activeFilter]);
 
-  const handleMoveAsset = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (!moveFormData.assetId || !moveFormData.targetLantai) {
-      showToast('Pilih aset dan lantai tujuan', 'warning');
+    
+    // Validate jumlah
+    const qty = parseInt(formData.jumlah);
+    if (qty < 1) {
+      showToast('Jumlah minimal 1', 'warning');
       return;
     }
 
     try {
-      const asset = assets.find(a => a.id === parseInt(moveFormData.assetId));
-      
-      const res = await fetch(`/api/assets/${moveFormData.assetId}`, {
-        method: 'PUT',
-        headers: { 
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          nama: asset.nama,
-          kode_aset: asset.kode_aset,
-          kategori: asset.kategori,
-          lokasi_lantai: parseInt(moveFormData.targetLantai),
-          kondisi: asset.kondisi,
-          status: asset.status,
-          catatan: moveFormData.keterangan || `Dipindahkan dari Lantai ${lantai} ke Lantai ${moveFormData.targetLantai}`
-        }),
-      });
-
-      const result = await res.json();
-
-      if (!result.success) {
-        throw new Error(result.error || 'Gagal memindahkan aset');
-      }
-
-      showToast(`Aset berhasil dipindahkan ke Lantai ${moveFormData.targetLantai}`, 'success');
-      closeMoveModal();
-      fetchAssets();
-    } catch (error) {
-      console.error('Error moving asset:', error);
-      showToast(error.message || 'Gagal memindahkan aset', 'error');
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    try {
-      const url = editMode 
-        ? `/api/assets/${currentAsset.id}` 
+      const url = editMode
+        ? `/api/assets/${currentAsset.id}`
         : '/api/assets';
       
       const method = editMode ? 'PUT' : 'POST';
-
       const res = await fetch(url, {
         method,
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          jumlah: qty
+        }),
       });
 
       const result = await res.json();
@@ -171,7 +148,7 @@ export default function EnhancedLantaiPage() {
       }
 
       showToast(
-        editMode ? 'Aset berhasil diperbarui' : 'Aset berhasil ditambahkan', 
+        editMode ? 'Aset berhasil diperbarui' : 'Aset berhasil ditambahkan',
         'success'
       );
       closeModal();
@@ -179,6 +156,65 @@ export default function EnhancedLantaiPage() {
     } catch (error) {
       console.error('Error saving asset:', error);
       showToast(error.message || 'Gagal menyimpan aset', 'error');
+    }
+  };
+
+  // PERBAIKAN: Hanya ada SATU fungsi handleMoveAsset
+  const handleMoveAsset = async (e) => {
+    e.preventDefault();
+
+    if (!moveFormData.assetId || !moveFormData.targetLantai) {
+      showToast('Pilih aset dan lantai tujuan', 'warning');
+      return;
+    }
+
+    const jumlahPindah = parseInt(moveFormData.jumlah);
+    if (jumlahPindah < 1) {
+      showToast('Jumlah minimal 1', 'warning');
+      return;
+    }
+
+    try {
+      const asset = assets.find(a => a.id === parseInt(moveFormData.assetId));
+      
+      if (!asset) {
+        throw new Error('Aset tidak ditemukan');
+      }
+
+      if (jumlahPindah > asset.jumlah) {
+        showToast(`Jumlah tersedia hanya ${asset.jumlah} unit`, 'warning');
+        return;
+      }
+
+      // PERBAIKAN: Gunakan API move yang sudah ada
+      const res = await fetch('/api/assets/move', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          assetId: parseInt(moveFormData.assetId),
+          targetLantai: parseInt(moveFormData.targetLantai),
+          jumlahPindah: jumlahPindah
+        }),
+      });
+
+      const result = await res.json();
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Gagal memindahkan aset');
+      }
+
+      showToast(
+        result.message || `Berhasil memindahkan ${jumlahPindah} unit ke Lantai ${moveFormData.targetLantai}`,
+        'success'
+      );
+      closeMoveModal();
+      fetchAssets(); // Refresh data
+
+    } catch (error) {
+      console.error('Error moving asset:', error);
+      showToast(error.message || 'Gagal memindahkan aset', 'error');
     }
   };
 
@@ -205,12 +241,9 @@ export default function EnhancedLantaiPage() {
   };
 
   const showToast = (message, type = 'success') => {
-    // Simple toast implementation - you can enhance this
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
-    toast.innerHTML = `
-      <div>${message}</div>
-    `;
+    toast.innerHTML = `<div>${message}</div>`;
     
     const container = document.querySelector('.toast-container') || createToastContainer();
     container.appendChild(toast);
@@ -233,10 +266,10 @@ export default function EnhancedLantaiPage() {
     setFormData({
       nama: '',
       kode_aset: '',
-      kategori: '',
       lokasi_lantai: lantai,
       kondisi: 'Baik',
       status: 'Aktif',
+      jumlah: 1
     });
     setShowModal(true);
     setShowFabMenu(false);
@@ -248,10 +281,10 @@ export default function EnhancedLantaiPage() {
     setFormData({
       nama: asset.nama,
       kode_aset: asset.kode_aset,
-      kategori: asset.kategori,
       lokasi_lantai: asset.lokasi_lantai,
       kondisi: asset.kondisi,
       status: asset.status,
+      jumlah: asset.jumlah
     });
     setShowModal(true);
   };
@@ -262,10 +295,11 @@ export default function EnhancedLantaiPage() {
       return;
     }
     
+    const firstAsset = assets[0];
     setMoveFormData({
-      assetId: assets[0]?.id.toString() || '',
+      assetId: firstAsset?.id.toString() || '',
       targetLantai: availableFloors[0]?.toString() || '',
-      keterangan: ''
+      jumlah: 1
     });
     setShowMoveModal(true);
     setShowFabMenu(false);
@@ -282,19 +316,28 @@ export default function EnhancedLantaiPage() {
     setMoveFormData({
       assetId: '',
       targetLantai: '',
-      keterangan: ''
+      jumlah: 1
     });
+  };
+
+  const clearSearch = () => {
+    setSearchQuery('');
   };
 
   const getKondisiBadge = (kondisi) => {
     if (kondisi === 'Baik') return 'badge success';
-    if (kondisi.includes('Rusak Ringan')) return 'badge warning';
-    return 'badge error';
+    return 'badge warning';
   };
 
   const getStatusBadge = (status) => {
     if (status === 'Aktif') return 'badge primary';
     return 'badge error';
+  };
+
+  const getMaxMoveQuantity = () => {
+    if (!moveFormData.assetId) return 1;
+    const asset = assets.find(a => a.id === parseInt(moveFormData.assetId));
+    return asset ? asset.jumlah : 1;
   };
 
   // Loading Skeleton Component
@@ -335,8 +378,8 @@ export default function EnhancedLantaiPage() {
         </div>
         {/* Desktop buttons - hidden on mobile */}
         <div className="flex gap-2">
-          <button 
-            className="btn btn-outline" 
+          <button
+            className="btn btn-outline"
             onClick={openMoveModal}
             disabled={assets.length === 0}
           >
@@ -361,6 +404,11 @@ export default function EnhancedLantaiPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
+          {searchQuery && (
+            <button className="search-clear" onClick={clearSearch}>
+              <X size={16} />
+            </button>
+          )}
         </div>
         <div className="filter-chips">
           {filters.map(filter => (
@@ -403,9 +451,9 @@ export default function EnhancedLantaiPage() {
                     <th>No</th>
                     <th>Kode Aset</th>
                     <th>Nama Aset</th>
-                    <th>Kategori</th>
                     <th>Kondisi</th>
                     <th>Status</th>
+                    <th>Jumlah</th>
                     <th>Aksi</th>
                   </tr>
                 </thead>
@@ -415,7 +463,6 @@ export default function EnhancedLantaiPage() {
                       <td>{index + 1}</td>
                       <td><strong>{asset.kode_aset}</strong></td>
                       <td>{asset.nama}</td>
-                      <td>{asset.kategori}</td>
                       <td>
                         <span className={getKondisiBadge(asset.kondisi)}>
                           {asset.kondisi}
@@ -426,6 +473,7 @@ export default function EnhancedLantaiPage() {
                           {asset.status}
                         </span>
                       </td>
+                      <td><strong>{asset.jumlah}</strong> unit</td>
                       <td>
                         <div className="flex gap-1">
                           <button
@@ -470,10 +518,6 @@ export default function EnhancedLantaiPage() {
                     
                     <div className="asset-card-details">
                       <div className="asset-card-detail">
-                        <span className="asset-card-label">Kategori</span>
-                        <span className="asset-card-value">{asset.kategori}</span>
-                      </div>
-                      <div className="asset-card-detail">
                         <span className="asset-card-label">Kondisi</span>
                         <span className={getKondisiBadge(asset.kondisi)}>
                           {asset.kondisi}
@@ -484,6 +528,10 @@ export default function EnhancedLantaiPage() {
                         <span className={getStatusBadge(asset.status)}>
                           {asset.status}
                         </span>
+                      </div>
+                      <div className="asset-card-detail">
+                        <span className="asset-card-label">Jumlah</span>
+                        <span className="asset-card-value"><strong>{asset.jumlah}</strong> unit</span>
                       </div>
                     </div>
                   </div>
@@ -513,8 +561,8 @@ export default function EnhancedLantaiPage() {
 
       {/* Floating Action Button (Mobile Only) */}
       <div className="fab-container">
-        <div 
-          className={`fab-backdrop ${showFabMenu ? 'open' : ''}`} 
+        <div
+          className={`fab-backdrop ${showFabMenu ? 'open' : ''}`}
           onClick={() => setShowFabMenu(false)}
           style={{ display: showFabMenu ? 'block' : 'none' }}
         />
@@ -540,8 +588,8 @@ export default function EnhancedLantaiPage() {
           </div>
         </div>
         
-        <button 
-          className="fab" 
+        <button
+          className="fab"
           onClick={(e) => {
             e.stopPropagation();
             setShowFabMenu(!showFabMenu);
@@ -558,7 +606,7 @@ export default function EnhancedLantaiPage() {
           {isMobile ? (
             // Mobile Bottom Sheet
             <>
-              <div 
+              <div
                 className={`bottom-sheet-overlay ${showModal ? 'open' : ''}`}
                 onClick={closeModal}
               />
@@ -582,7 +630,6 @@ export default function EnhancedLantaiPage() {
                         required
                       />
                     </div>
-
                     <div className="form-group">
                       <label className="form-label">Kode Aset</label>
                       <input
@@ -593,19 +640,6 @@ export default function EnhancedLantaiPage() {
                         required
                       />
                     </div>
-
-                    <div className="form-group">
-                      <label className="form-label">Kategori</label>
-                      <input
-                        type="text"
-                        className="form-input"
-                        value={formData.kategori}
-                        onChange={(e) => setFormData({...formData, kategori: e.target.value})}
-                        placeholder="Contoh: Elektronik, Furniture, IT"
-                        required
-                      />
-                    </div>
-
                     <div className="form-group">
                       <label className="form-label">Kondisi</label>
                       <select
@@ -615,11 +649,9 @@ export default function EnhancedLantaiPage() {
                         required
                       >
                         <option value="Baik">Baik</option>
-                        <option value="Rusak Ringan">Rusak Ringan</option>
-                        <option value="Rusak Berat">Rusak Berat</option>
+                        <option value="Rusak">Rusak</option>
                       </select>
                     </div>
-
                     <div className="form-group">
                       <label className="form-label">Status</label>
                       <select
@@ -630,11 +662,20 @@ export default function EnhancedLantaiPage() {
                       >
                         <option value="Aktif">Aktif</option>
                         <option value="Tidak Aktif">Tidak Aktif</option>
-                        <option value="Dalam Perbaikan">Dalam Perbaikan</option>
                       </select>
                     </div>
+                    <div className="form-group">
+                      <label className="form-label">Jumlah</label>
+                      <input
+                        type="number"
+                        className="form-input"
+                        min="1"
+                        value={formData.jumlah}
+                        onChange={(e) => setFormData({...formData, jumlah: e.target.value})}
+                        required
+                      />
+                    </div>
                   </div>
-
                   <div className="bottom-sheet-footer">
                     <button type="button" className="btn btn-outline w-full" onClick={closeModal}>
                       Batal
@@ -671,7 +712,6 @@ export default function EnhancedLantaiPage() {
                         required
                       />
                     </div>
-
                     <div className="form-group">
                       <label className="form-label">Kode Aset</label>
                       <input
@@ -682,19 +722,6 @@ export default function EnhancedLantaiPage() {
                         required
                       />
                     </div>
-
-                    <div className="form-group">
-                      <label className="form-label">Kategori</label>
-                      <input
-                        type="text"
-                        className="form-input"
-                        value={formData.kategori}
-                        onChange={(e) => setFormData({...formData, kategori: e.target.value})}
-                        placeholder="Contoh: Elektronik, Furniture, IT"
-                        required
-                      />
-                    </div>
-
                     <div className="form-group">
                       <label className="form-label">Kondisi</label>
                       <select
@@ -704,11 +731,9 @@ export default function EnhancedLantaiPage() {
                         required
                       >
                         <option value="Baik">Baik</option>
-                        <option value="Rusak Ringan">Rusak Ringan</option>
-                        <option value="Rusak Berat">Rusak Berat</option>
+                        <option value="Rusak">Rusak</option>
                       </select>
                     </div>
-
                     <div className="form-group">
                       <label className="form-label">Status</label>
                       <select
@@ -719,11 +744,20 @@ export default function EnhancedLantaiPage() {
                       >
                         <option value="Aktif">Aktif</option>
                         <option value="Tidak Aktif">Tidak Aktif</option>
-                        <option value="Dalam Perbaikan">Dalam Perbaikan</option>
                       </select>
                     </div>
+                    <div className="form-group">
+                      <label className="form-label">Jumlah</label>
+                      <input
+                        type="number"
+                        className="form-input"
+                        min="1"
+                        value={formData.jumlah}
+                        onChange={(e) => setFormData({...formData, jumlah: e.target.value})}
+                        required
+                      />
+                    </div>
                   </div>
-
                   <div className="modal-footer">
                     <button type="button" className="btn btn-outline" onClick={closeModal}>
                       Batal
@@ -745,7 +779,7 @@ export default function EnhancedLantaiPage() {
           {isMobile ? (
             // Mobile Bottom Sheet
             <>
-              <div 
+              <div
                 className={`bottom-sheet-overlay ${showMoveModal ? 'open' : ''}`}
                 onClick={closeMoveModal}
               />
@@ -762,18 +796,24 @@ export default function EnhancedLantaiPage() {
                       <select
                         className="form-select"
                         value={moveFormData.assetId}
-                        onChange={(e) => setMoveFormData({...moveFormData, assetId: e.target.value})}
+                        onChange={(e) => {
+                          const asset = assets.find(a => a.id === parseInt(e.target.value));
+                          setMoveFormData({
+                            ...moveFormData, 
+                            assetId: e.target.value,
+                            jumlah: 1
+                          });
+                        }}
                         required
                       >
                         <option value="">-- Pilih Aset --</option>
                         {assets.map(asset => (
                           <option key={asset.id} value={asset.id}>
-                            {asset.kode_aset} - {asset.nama}
+                            {asset.kode_aset} - {asset.nama} ({asset.jumlah} unit)
                           </option>
                         ))}
                       </select>
                     </div>
-
                     <div className="form-group">
                       <label className="form-label">Tujuan Lantai</label>
                       <select
@@ -790,19 +830,24 @@ export default function EnhancedLantaiPage() {
                         ))}
                       </select>
                     </div>
-
                     <div className="form-group">
-                      <label className="form-label">Keterangan (Opsional)</label>
-                      <textarea
+                      <label className="form-label">Jumlah yang Dipindahkan</label>
+                      <input
+                        type="number"
                         className="form-input"
-                        rows="3"
-                        value={moveFormData.keterangan}
-                        onChange={(e) => setMoveFormData({...moveFormData, keterangan: e.target.value})}
-                        placeholder="Catatan pemindahan aset..."
+                        min="1"
+                        max={getMaxMoveQuantity()}
+                        value={moveFormData.jumlah}
+                        onChange={(e) => setMoveFormData({...moveFormData, jumlah: e.target.value})}
+                        required
                       />
+                      {moveFormData.assetId && (
+                        <small style={{ color: 'var(--color-text-light)', marginTop: '0.25rem', display: 'block' }}>
+                          Maksimal: {getMaxMoveQuantity()} unit
+                        </small>
+                      )}
                     </div>
                   </div>
-
                   <div className="bottom-sheet-footer">
                     <button type="button" className="btn btn-outline w-full" onClick={closeMoveModal}>
                       Batal
@@ -833,18 +878,24 @@ export default function EnhancedLantaiPage() {
                       <select
                         className="form-select"
                         value={moveFormData.assetId}
-                        onChange={(e) => setMoveFormData({...moveFormData, assetId: e.target.value})}
+                        onChange={(e) => {
+                          const asset = assets.find(a => a.id === parseInt(e.target.value));
+                          setMoveFormData({
+                            ...moveFormData, 
+                            assetId: e.target.value,
+                            jumlah: 1
+                          });
+                        }}
                         required
                       >
                         <option value="">-- Pilih Aset --</option>
                         {assets.map(asset => (
                           <option key={asset.id} value={asset.id}>
-                            {asset.kode_aset} - {asset.nama}
+                            {asset.kode_aset} - {asset.nama} ({asset.jumlah} unit)
                           </option>
                         ))}
                       </select>
                     </div>
-
                     <div className="form-group">
                       <label className="form-label">Tujuan Lantai</label>
                       <select
@@ -861,19 +912,24 @@ export default function EnhancedLantaiPage() {
                         ))}
                       </select>
                     </div>
-
                     <div className="form-group">
-                      <label className="form-label">Keterangan (Opsional)</label>
-                      <textarea
+                      <label className="form-label">Jumlah yang Dipindahkan</label>
+                      <input
+                        type="number"
                         className="form-input"
-                        rows="3"
-                        value={moveFormData.keterangan}
-                        onChange={(e) => setMoveFormData({...moveFormData, keterangan: e.target.value})}
-                        placeholder="Catatan pemindahan aset..."
+                        min="1"
+                        max={getMaxMoveQuantity()}
+                        value={moveFormData.jumlah}
+                        onChange={(e) => setMoveFormData({...moveFormData, jumlah: e.target.value})}
+                        required
                       />
+                      {moveFormData.assetId && (
+                        <small style={{ color: 'var(--color-text-light)', marginTop: '0.25rem', display: 'block' }}>
+                          Maksimal: {getMaxMoveQuantity()} unit
+                        </small>
+                      )}
                     </div>
                   </div>
-
                   <div className="modal-footer">
                     <button type="button" className="btn btn-outline" onClick={closeMoveModal}>
                       Batal
