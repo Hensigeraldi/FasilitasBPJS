@@ -58,8 +58,12 @@ export default function Sidebar({ isMobileOpen, onClose }) {
     <aside className={`sidebar ${isMobileOpen ? 'mobile-open' : ''}`}>
       <div className="sidebar-header">
         <div className="sidebar-logo">
-          <Package size={28} />
-          <span>BPJS Asset</span>
+          <img 
+            src="/images/logobpjs.png" 
+            alt="BPJS Logo" 
+            className="sidebar-logo-image"
+          />
+          <span className="sidebar-logo-text">BPJS Asset</span>
         </div>
         <button className="sidebar-close" onClick={onClose}>
           <X size={20} />

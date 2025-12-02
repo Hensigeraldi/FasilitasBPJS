@@ -66,19 +66,13 @@ export default function LoginPage() {
             {/* BPJS Logo */}
             <div className="dark-logo-container">
               <div className="dark-logo-glow"></div>
-              <svg className="dark-bpjs-logo" viewBox="0 0 120 120" fill="none">
-                <rect x="10" y="10" width="100" height="100" rx="20" fill="url(#logoGradient)" />
-                <path d="M40 45 L40 75 M40 45 L55 45 C62 45 62 60 55 60 L40 60 M55 60 C62 60 62 75 55 75 L40 75" 
-                      stroke="#0a0f1a" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-                <defs>
-                  <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#00ff9d" />
-                    <stop offset="100%" stopColor="#00b374" />
-                  </linearGradient>
-                </defs>
-              </svg>
+                <img 
+                  src="/images/logobpjs.png" 
+                  alt="BPJS Logo" 
+                  className="dark-bpjs-logo"
+                />
             </div>
-            
+                        
             <div className="dark-brand-text">
               <h1 className="dark-brand-title">BPJS Ketenagakerjaan</h1>
               <p className="dark-brand-tagline">Sistem Manajemen Inventaris</p>
